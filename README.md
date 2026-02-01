@@ -1,5 +1,7 @@
 <p align="center">
-  <img src="https://files.catbox.moe/w6cq6f.png" alt="Lumi Banner" /></p>
+  <img src="https://files.catbox.moe/w6cq6f.png" alt="Lumi Banner" />
+</p>
+
 ---
 ## 🚧 Coming Soon
 
