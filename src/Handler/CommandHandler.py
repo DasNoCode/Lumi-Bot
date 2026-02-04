@@ -154,7 +154,7 @@ class CommandHandler:
                 f"@{getattr(M.sender, 'user_name', 'user_full_name')} in {chat_name} at {timestamp}"
             )
         else:
-            self._client.log.info(
+            return self._client.log.info(
                 f"[{msg_type}] from {M.sender.user_name} in {chat_name} at {timestamp}"
             )
              
@@ -246,23 +246,18 @@ class CommandHandler:
         required_perms: List[str] = getattr(cmd.config, "admin_permissions", [])
         
         if getattr(cmd.config, "OnlyAdmin", False):
-            if not M.is_admin:
-                bot_has_perm: bool = M.sender.permissions.get(perm) is not False
-                if not bot_has_perm:
+            for perm in required_perms:
+                bot_perm: bool = await self._client.get_chat_member(M.chat_id, self._client.bot_user_id)
+                if not getattr(bot_perm, perm, True):
                     return await self._client.send_message(
                         chat_id=M.chat_id,
-                        text=f"🤖 Bot does't have {required_perms} to execute this command.",
+                        text=f"🤖 Bot must have '{perm}' permission to execute this command.",
                         reply_to_message_id=M.message_id,
                     )
-                return await self._client.send_message(
-                    chat_id=M.chat_id,
-                    text="❌ You must be an admin to use this command.",
-                    reply_to_message_id=M.message_id,
-                )
-
+                    
         if M.sender.user_role == "admin":
             for perm in required_perms:
-                has_perm: bool = M.sender.permissions.get(perm) is not False
+                has_perm: bool = M.sender.permissions.get(perm)
                 if not has_perm:
                     return await self._client.send_message(
                         chat_id=M.chat_id,

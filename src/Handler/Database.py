@@ -120,7 +120,7 @@ class Database:
                 enable=enable,
                 reason=reason
             ).save()
-    
+
     
     # --- cmd info ---
     def get_cmd_info(self, cmd_name: str) -> Union[Command, JsonObject]:
@@ -140,6 +140,35 @@ class Database:
                 }
             )
 
+    def add_sticker_sets(
+        self,
+        sticker_sets_name: str,
+    ) -> list[str]:
+        command: Command = Command.objects.first()
+        if sticker_sets_name not in command.sticker_sets:
+            command.sticker_sets.append(sticker_sets_name)
+    
+        command.save()
+        return command.sticker_sets
+
+                
+    def delete_sticker_set(
+        self,
+        sticker_set_name: str,
+    ) -> bool:
+        try:
+            command: Command = Command.objects.first()
+    
+            if sticker_set_name not in command.sticker_sets:
+                return False
+    
+            command.sticker_sets.remove(sticker_set_name)
+            command.save()
+            return True
+    
+        except DoesNotExist:
+            return False
+            
     # --- get all users data ---
     def get_all_users_data(self, field: Optional[str] = None) -> List[Dict[str, Any]]:
         query = User.objects.all()

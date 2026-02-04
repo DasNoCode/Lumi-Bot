@@ -241,6 +241,8 @@ class Utils:
                 "-y",
                 "-i",
                 str(input_path),
+                "-t",
+                "3",
                 "-vf",
                 f"scale={STICKER_SIZE}:force_original_aspect_ratio=decrease,fps=30",
                 "-c:v",
@@ -248,14 +250,16 @@ class Utils:
                 "-pix_fmt",
                 "yuv420p",
                 "-b:v",
-                "0",
-                "-crf",
-                "30",
+                "200k",
+                "-maxrate",
+                "200k",
+                "-bufsize",
+                "200k",
                 "-an",
                 str(output_path),
             ],
-            check=True,
-        )
+                    check=True,)
+      
 
     # --- formatting ---
     @staticmethod

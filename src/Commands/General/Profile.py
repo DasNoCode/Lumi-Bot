@@ -45,8 +45,10 @@ class Command(BaseCommand):
         user_bio: str = chat.bio or "N/A"
 
         photo: str | None = None
-        if user.user_profile_id:
-            photo = await self.client.download_media(user.user_profile_id)
+        photo_id: str = await self.client.get_profile_id(user.user_id)
+        print(photo_id)
+        if photo_id:
+            photo = await self.client.download_media(photo_id)
 
         text = (
             "<blockquote>"

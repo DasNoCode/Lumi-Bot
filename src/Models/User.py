@@ -7,7 +7,6 @@ from zoneinfo import ZoneInfo
 class User(MongoModel):
     user_id: int = fields.CharField(required=True)
     afk: bool = fields.DictField(required=False, default=lambda: {"status": False})
-    sticker_pack: str = fields.CharField(required=False, blank=True, default=None)
     xp: int = fields.IntegerField(required=True, min_value=0, default=0)
     level: int = fields.IntegerField(required=True, min_value=1, default=1)
     ban: bool = fields.DictField(required=True, default=lambda: {"status": False})

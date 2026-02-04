@@ -71,12 +71,12 @@ class Command(BaseCommand):
                     if level > 1
                     else 0
                 )
-
-                profile_path: str = await self.client.download_media(
-                    user.user_profile_id
+                photo_id: str = await self.client.get_profile_id(user.user_id)
+                photo: str | None = await self.client.download_media(
+                    photo_id
                 )
-                avatar_url: str = self.client.utils.img_to_url(profile_path)
-                os.remove(profile_path)
+                avatar_url: str = self.client.utils.img_to_url(photo)
+                os.remove(photo)
                 
                 card_buffer = self.client.utils.fetch_buffer(
                     self.client.utils.rank_card(
@@ -93,9 +93,9 @@ class Command(BaseCommand):
                     photo=card_buffer,
                     caption=(
                         "<blockquote>"
-                        f"Rank name: {rank_name} {rank_emoji}\n"
-                        f"Next rank: {next_rank_name} {next_rank_emoji}\n"
-                        f"XP needed: {next_rank_xp - current_xp}"
+                        f"├Rank name: {rank_name} {rank_emoji}\n"
+                        f"├Next rank: {next_rank_name} {next_rank_emoji}\n"
+                        f"└XP needed: {next_rank_xp - current_xp}"
                         "</blockquote>"
                         f"\n{caption if caption else ''}"
                     ),
