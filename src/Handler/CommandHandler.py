@@ -271,12 +271,7 @@ class CommandHandler:
 
         # --- Execute Command ---
         await cmd.exec(M, context)
-        #try:
-        #    
-        #except Exception as e:
-        #    tb = traceback.extract_tb(e.__traceback__)[-1]
-        #    self._client.log.error(f"[ERROR] {context.cmd} : {tb.lineno} | {e}")
-            
+
         # --- Mention AFK Users ---
         users: list[User] = []
         

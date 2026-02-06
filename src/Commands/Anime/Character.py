@@ -1,4 +1,5 @@
 from __future__ import annotations
+import traceback
 from Libs import BaseCommand
 from typing import Any, TYPE_CHECKING
 
@@ -25,57 +26,70 @@ class Command(BaseCommand):
         )
 
     async def exec(self, M: Message, context: list[Any]) -> None:
-        query = " ".join(context.get("args", [])).strip() if context else None
+        query = context.get("text", "")
 
         if not query:
-            return await self.client.send_message(
-                M.chat_id,
-                "❌ Looks like you forgot to type the character name.",
+            await self.client.send_message(
+                chat_id=M.chat_id,
+                text="<blockquote>❌ <b>Please provide a character name.</b></blockquote>",
                 reply_to_message_id=M.message_id,
+                parse_mode="HTML",
             )
+            return
 
         try:
-            url = f"https://weeb-api.vercel.app/character?search={query}"
-            characters = self.client.utils.fetch(url)
-
-            if not characters:
-                return await self.client.send_message(
-                    M.chat_id,
-                    "🤔 Hmm... I couldn't find any character matching your search. Maybe double-check the name?",
-                    reply_to_message_id=M.message_id,
-                )
-
-            msg = (
-                f"👤 Character Search Results 👤\n\n"
-                f"Here’s what I found for {query} ⚡︎\n\n"
+            characters = self.client.utils.fetch(
+                f"https://weeb-api.vercel.app/character?search={query}"
             )
 
-            for i, char in enumerate(characters):
+            if not characters:
+                await self.client.send_message(
+                    chat_id=M.chat_id,
+                    text=(
+                        "<blockquote>"
+                        "🤔 <b>No characters found.</b>\n"
+                        "Try searching with a different name."
+                        "</blockquote>"
+                    ),
+                    reply_to_message_id=M.message_id,
+                    parse_mode="HTML",
+                )
+                return
+
+            text = (
+                "<blockquote>"
+                f"👤 <b>Character Search Results</b>\n"
+                f"├ <b>Query:</b> {query}\n\n"
+            )
+
+            for i, char in enumerate(characters, start=1):
                 gender = char.get("gender", "Unknown")
-                symbol = (
-                    "🚺"
-                    if gender == "Female"
-                    else "🚹" if gender == "Male" else "🚻"
+                symbol = "🚺" if gender == "Female" else "🚹" if gender == "Male" else "🚻"
+
+                text += (
+                    f"#{i}\n"
+                    f"├ <b>Full Name:</b> {char['name']['full']}\n"
+                    f"├ <b>Native Name:</b> {char['name']['native']}\n"
+                    f"├ <b>Gender:</b> {gender} {symbol}\n"
+                    f"├ <b>More Info:</b> {self.client.prefix}cid {char['id']}\n\n"
                 )
 
-                msg += (
-                    f"#{i+1}\n"
-                    f"🌀 Full name: {char['name']['full']}\n"
-                    f"💠 Native name: {char['name']['native']}\n"
-                    f"🔗 Gender: {gender} {symbol}\n"
-                    f"🔎 More Info: {self.client.prefix}cid {char['id']}\n\n"
-                )
+            text += "</blockquote>"
 
             await self.client.send_message(
-                M.chat_id,
-                msg.strip(),
+                chat_id=M.chat_id,
+                text=text.strip(),
                 reply_to_message_id=M.message_id,
+                parse_mode="HTML",
             )
 
         except Exception as e:
             await self.client.send_message(
-                M.chat_id,
-                "⚠️ Failed to fetch character data. Please try again later.",
+                chat_id=M.chat_id,
+                text="⚠️ <b>Failed to fetch character data.</b>",
                 reply_to_message_id=M.message_id,
+                parse_mode="HTML",
             )
-            self.client.log.error(f"[ERROR] [CharacterSearch] {e}")
+            tb = traceback.extract_tb(e.__traceback__)[-1]
+            self.client.log.error(f"[ERROR] {context.cmd}: {tb.lineno} | {e}")
+            

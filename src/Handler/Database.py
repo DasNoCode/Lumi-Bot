@@ -3,6 +3,7 @@ from typing import Optional, Any, Dict, List
 
 from pymodm import connect
 from pymodm.errors import DoesNotExist
+from telegram import ChatPermissions
 
 from Models import User, Chat, Bot
 from Helpers import JsonObject
@@ -153,6 +154,34 @@ class Database:
         
     def set_group_mod(self, chat_id: int, mod_status: bool) -> None:
         self._update_or_create_group(chat_id, {"mod": mod_status})
+
+    def chat_perms(
+        self,
+        chat_id: int,
+        perms: ChatPermissions,
+    ) -> None:
+        permissions: Dict[str, bool] = {
+            "can_send_messages": perms.can_send_messages,
+            "can_send_photos": perms.can_send_photos,
+            "can_send_videos": perms.can_send_videos,
+            "can_send_audios": perms.can_send_audios,
+            "can_send_documents": perms.can_send_documents,
+            "can_send_voice_notes": perms.can_send_voice_notes,
+            "can_send_video_notes": perms.can_send_video_notes,
+            "can_send_polls": perms.can_send_polls,
+            "can_send_other_messages": perms.can_send_other_messages,
+            "can_add_web_page_previews": perms.can_add_web_page_previews,
+            "can_invite_users": perms.can_invite_users,
+            "can_pin_messages": perms.can_pin_messages,
+            "can_change_info": perms.can_change_info,
+            "can_manage_topics": perms.can_manage_topics,
+        }
+    
+        chat = self.get_group_by_chat_id(chat_id)
+        current = getattr(chat, "permissions", {}) or {}
+        current.update(permissions)
+    
+        self._update_or_create_group(chat_id, {"permissions": current})
 
     def update_user_ban(self, user_id: int, status: bool, reason: str | None = None) -> None:
         ban_data = {

@@ -25,7 +25,7 @@ class Utils:
         self.config = config
 
     # --- network ---
-    def fetch(self, url: str) -> Optional[dict[str, Any]]:
+    async def fetch(self, url: str) -> Optional[dict[str, Any]]:
         try:
             response = requests.get(url, timeout=15)
             response.raise_for_status()

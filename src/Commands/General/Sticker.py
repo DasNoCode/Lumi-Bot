@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 from pathlib import Path
-from typing import Any, TYPE_CHECKING
+from typing import Any, TYPE_CHECKING, Dict, List
 
 from Libs import BaseCommand
 from telegram import InputSticker, InlineKeyboardButton, InlineKeyboardMarkup
@@ -45,6 +45,7 @@ class Command(BaseCommand):
             return
 
         store_key = (M.chat_id, M.sender.user_id)
+        user_sets: List[Dict[str, Any]] = self.client.db.get_user_sticker_sets(M.sender.user_id)
 
         if M.is_callback:
             try:
@@ -96,8 +97,6 @@ class Command(BaseCommand):
                 "title": title,
                 "origin_msg_id": origin_msg_id,
             }
-
-            user_sets = self.client.db.get_user_sticker_sets(M.sender.user_id)
 
             if user_sets:
                 buttons: list[list[InlineKeyboardButton]] = []
@@ -158,11 +157,26 @@ class Command(BaseCommand):
                 return
 
             pack_type: str = "video" if is_video else "static"
+            pack_id: str = self.client.utils.random_text()
             bot_username: str = self.client.bot.username.lower()
 
             if force_new or not selected_set:
-                pack_name = f"pack_{M.sender.user_id}_{pack_type}_by_{bot_username}"
-                pack_title = title or f"{M.sender.user_full_name}'s Stickers"
+                pack_name = (
+                    f"pack_{pack_id}_{M.sender.user_id}_{pack_type}_by_{bot_username}"
+                )
+                pack_title = (title or f"{M.sender.user_full_name}'s Stickers") + (
+                    f" ({n})"
+                    if (
+                        n := sum(
+                            1
+                            for s in user_sets
+                            if s["pack_title"].startswith(
+                                title or f"{M.sender.user_full_name}'s Stickers"
+                            )
+                        )
+                    )
+                    else ""
+                )
             else:
                 pack_name = selected_set
                 pack_title = None

@@ -69,7 +69,6 @@ class Command(BaseCommand):
                 text=f"✅ Verified @{M.sender.user_name or M.sender.user_full_name}! You may chat now.",
             )
             return
-        print(attempt)
         if attempt >= 2:
             self.client.interaction_store.pop(key, None)
 

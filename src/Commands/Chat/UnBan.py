@@ -1,5 +1,6 @@
 from __future__ import annotations
 import sys
+import traceback
 from typing import Any, TYPE_CHECKING
 from Libs import BaseCommand
 
@@ -63,16 +64,12 @@ class Command(BaseCommand):
                 )
 
         except Exception as e:
-            _, _, tb = sys.exc_info()
-            line_no: int = tb.tb_lineno if tb else -1
-        
+            tb = traceback.extract_tb(e.__traceback__)[-1]
+            self.client.log.error(f"[ERROR] {context.cmd}: {tb.lineno} | {e}")
+            
             await self.client.send_message(
                 chat_id=M.chat_id,
                 text="❌ Failed to unban user(s).",
                 reply_to_message_id=M.message_id,
             )
-            self.client.log.error(
-                "[UnBan] line %d: %s",
-                line_no,
-                e,
-            )
+

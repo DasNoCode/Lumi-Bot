@@ -1,4 +1,5 @@
 from __future__ import annotations
+import traceback
 from Libs import BaseCommand
 from typing import Any, TYPE_CHECKING
 
@@ -25,49 +26,68 @@ class Command(BaseCommand):
         )
 
     async def exec(self, M: Message, context: list[Any]) -> None:
-        query = " ".join(context.get("args", [])).strip() if context else None
-
+        query = context.get("text", "")
         if not query:
-            return await self.client.send_message(
-                M.chat_id,
-                "❌ Looks like you forgot to type the manga name.",
+            await self.client.send_message(
+                chat_id=M.chat_id,
+                text="<blockquote>❌ <b>You forgot to provide a manga name.</b></blockquote>",
                 reply_to_message_id=M.message_id,
+                parse_mode="HTML",
             )
+            return
 
         try:
-            url = f"https://weeb-api.vercel.app/manga?search={query}"
-            mangas = self.client.utils.fetch(url)
+            mangas = await self.client.utils.fetch(
+                f"https://weeb-api.vercel.app/manga?search={query}"
+            )
 
             if not mangas:
-                return await self.client.send_message(
-                    M.chat_id,
-                    "🤔 Hmm... I couldn't find anything matching your search. Maybe try a different name?",
+                await self.client.send_message(
+                    chat_id=M.chat_id,
+                    text=(
+                        "<blockquote>"
+                        "🤔 <b>No results found.</b>\n"
+                        "├ Try a different name"
+                        "</blockquote>"
+                    ),
                     reply_to_message_id=M.message_id,
+                    parse_mode="HTML",
                 )
+                return
 
-            msg = f"📚 Manga Search Results 📚\n\nHere’s what I found for {query} ⚡︎\n\n"
+            text = (
+                "<blockquote>"
+                f"📚 <b>Manga Search Results</b>\n"
+                f"├ <b>Query:</b> {query}\n"
+                "</blockquote>\n"
+            )
 
             for i, manga in enumerate(mangas):
                 symbol = "🔞" if manga.get("isAdult") else "🌀"
-                msg += (
+                text += (
+                    "<blockquote>"
                     f"#{i + 1}\n"
-                    f"📖 English name: {manga['title']['english']}\n"
-                    f"🌐 Alternative Name: {manga['title']['romaji']}\n"
-                    f"📌 Status: {manga['status']}\n"
-                    f"⚠️ Is Adult: {manga['isAdult']} {symbol}\n"
-                    f"🔎 More Info: {self.client.config.prefix}mid {manga['id']}\n\n"
+                    f"├ <b>English:</b> {manga['title']['english']}\n"
+                    f"├ <b>Romaji:</b> {manga['title']['romaji']}\n"
+                    f"├ <b>Status:</b> {manga['status']}\n"
+                    f"├ <b>Adult:</b> {manga['isAdult']} {symbol}\n"
+                    f"└ <b>More:</b> {self.client.config.prefix}mid {manga['id']}"
+                    "</blockquote>\n"
                 )
 
             await self.client.send_message(
-                M.chat_id,
-                msg.strip(),
+                chat_id=M.chat_id,
+                text=text.strip(),
                 reply_to_message_id=M.message_id,
+                parse_mode="HTML",
             )
 
         except Exception as e:
             await self.client.send_message(
-                M.chat_id,
-                "⚠️ Failed to fetch manga info. Please try again later.",
+                chat_id=M.chat_id,
+                text="⚠️ <b>Failed to fetch manga information.</b>",
                 reply_to_message_id=M.message_id,
+                parse_mode="HTML",
             )
-            self.client.log.error(f"[ERROR] [MangaSearch] {e}")
+            tb = traceback.extract_tb(e.__traceback__)[-1]
+            self.client.log.error(f"[ERROR] {context.cmd}: {tb.lineno} | {e}")

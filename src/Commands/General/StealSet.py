@@ -1,5 +1,6 @@
 from __future__ import annotations
-from typing import Any, TYPE_CHECKING, List
+import traceback
+from typing import Any, TYPE_CHECKING, Dict, List
 
 from Libs import BaseCommand
 from telegram import InputSticker, LinkPreviewOptions
@@ -28,6 +29,9 @@ class Command(BaseCommand):
         )
 
     async def exec(self, M: Message, context: dict[str, Any]) -> None:
+        flags: dict[str, str] = context.get("flags", {})
+        title: str | None = flags.get("title")
+        
         reply = M.reply_to_message
         if not reply or not reply.sticker:
             await self.client.send_message(
@@ -60,10 +64,26 @@ class Command(BaseCommand):
             else:
                 stk_format = StickerFormat.STATIC
                 pack_type = "static"
-
+                
+            user_sets: List[Dict[str, Any]] = self.client.db.get_user_sticker_sets(M.sender.user_id)
             bot_username = self.client.bot.username.lower()
-            new_pack_name = f"u{M.sender.user_id}_{pack_type}_by_{bot_username}".lower()
-            new_pack_title = f"{M.sender.user_full_name}'s Cloned Stickers"
+            pack_id: str = self.client.utils.random_text()
+            new_pack_name = (
+                f"pack_{pack_id}_{M.sender.user_id}_{pack_type}_by_{bot_username}"
+            )
+            new_pack_title = (title or f"{M.sender.user_full_name}'s Stickers") + (
+                f" ({n})"
+                if (
+                    n := sum(
+                        1
+                        for s in user_sets
+                        if s["pack_title"].startswith(
+                            title or f"{M.sender.user_full_name}'s Cloned Stickers"
+                        )
+                    )
+                )
+                else ""
+            )
 
             stickers: List[InputSticker] = [
                 InputSticker(
@@ -83,7 +103,7 @@ class Command(BaseCommand):
                 stickers=stickers,
                 sticker_type="regular",
             )
-
+            await self.client.db.add_sticker_sets(pack_name=new_pack_name, pack_title=new_pack_title, format=pack_type, creator_user_id=M.sender.user_id)
             await self.client.bot.delete_message(M.chat_id, loading.message_id)
             await self.client.send_message(
                 chat_id=M.chat_id,
@@ -102,7 +122,8 @@ class Command(BaseCommand):
                 text="❌ Failed to clone sticker pack. Telegram rejected the request.",
                 reply_to_message_id=M.message_id,
             )
-            self.client.log.error(f"[StealPack][BadRequest] {e}")
+            tb = traceback.extract_tb(e.__traceback__)[-1]
+            self.client.log.error(f"[ERROR] {context.cmd}: {tb.lineno} | {e}")
         
         except Exception as e:
             await self.client.send_message(
@@ -110,4 +131,5 @@ class Command(BaseCommand):
                 text="❌ Failed to clone sticker pack due to an unexpected error.",
                 reply_to_message_id=M.message_id,
             )
-            self.client.log.error(f"[StealPack][Error] {e}")
+            tb = traceback.extract_tb(e.__traceback__)[-1]
+            self.client.log.error(f"[ERROR] {context.cmd}: {tb.lineno} | {e}")

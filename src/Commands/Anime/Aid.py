@@ -1,4 +1,5 @@
 from __future__ import annotations
+import traceback
 from Libs import BaseCommand
 from typing import Any, TYPE_CHECKING
 
@@ -25,61 +26,68 @@ class Command(BaseCommand):
         )
 
     async def exec(self, M: Message, context: list[Any]) -> None:
-        # ⛔ Validate input
-        if not context or not context[0].isdigit():
-            return await self.client.send_message(
+        if not int(context.get("text", "")):
+            await self.client.send_message(
                 chat_id=M.chat_id,
-                text="❌ Looks like you forgot to type the anime ID.",
+                text="<blockquote>❌ <b>You must provide a valid anime ID.</b></blockquote>",
                 reply_to_message_id=M.message_id,
+                parse_mode="HTML",
             )
+            return
 
-        anime_id = context[0]
+        anime_id: str = int(context.get("text", ""))
 
         try:
-            # 🌐 Fetch anime data
-            data = await self.client.utils.fetch(
+            data = self.client.utils.fetch(
                 f"https://weeb-api.vercel.app/anime?search={anime_id}"
             )
 
             if not data:
-                return await self.client.send_message(
+                await self.client.send_message(
                     chat_id=M.chat_id,
-                    text="🤔 Hmm... I couldn't find anything matching your search.",
+                    text="<blockquote>🤔 <b>No anime found for this ID.</b></blockquote>",
                     reply_to_message_id=M.message_id,
+                    parse_mode="HTML",
                 )
+                return
 
             anime = data[0]
+            title = anime["title"]
 
-            # 🧾 Build response message
-            msg = (
-                f"🎬 *{anime['title']['english']}* *|* {anime['title']['romaji']}\n"
-                f"💠 *Japanese Name:* {anime['title']['native']}\n"
-                f"📀 *Type:* {anime['format']}\n"
-                f"🔖 *Is Adult:* {'Yes' if anime['isAdult'] else 'No'}\n"
-                f"📡 *Status:* {anime['status']}\n"
-                f"🎞 *Episodes:* {anime['episodes']}\n"
-                f"🕒 *Duration:* {anime['duration']} min per episode\n"
-                f"🗓 *First Aired:* {anime['startDate']}\n"
-                f"📅 *Last Aired:* {anime['endDate']}\n"
-                f"🎨 *Genres:* {', '.join(anime['genres'])}\n"
-                f"🏢 *Studios:* {anime['studios']}\n"
-                f"🎥 *Trailer:* https://youtu.be/{anime.get('trailer', {}).get('id', 'null')}\n\n"
-                f"📖 *Description:*\n{anime['description']}"
+            text = (
+                "<blockquote>"
+                f"🎬 <b>{title['english']} | {title['romaji']}</b>\n"
+                f"├ <b>Japanese:</b> {title['native']}\n"
+                f"├ <b>Type:</b> {anime['format']}\n"
+                f"├ <b>Adult:</b> {'Yes' if anime['isAdult'] else 'No'}\n"
+                f"├ <b>Status:</b> {anime['status']}\n"
+                f"├ <b>Episodes:</b> {anime['episodes']}\n"
+                f"├ <b>Duration:</b> {anime['duration']} min\n"
+                f"├ <b>First Aired:</b> {anime['startDate']}\n"
+                f"├ <b>Last Aired:</b> {anime['endDate']}\n"
+                f"├ <b>Genres:</b> {', '.join(anime['genres'])}\n"
+                f"├ <b>Studios:</b> {anime['studios']}\n"
+                f"├ <b>Trailer:</b> https://youtu.be/{anime.get('trailer', {}).get('id', 'N/A')}\n\n"
+                f"📖 <b>Description</b>\n{anime['description']}"
+                "</blockquote>"
             )
 
-            # 🖼️ Send photo with caption
-            image = await self.client.utils.fetch_buffer(anime["imageUrl"])
+            image = self.client.utils.fetch_buffer(anime["imageUrl"])
             await self.client.send_photo(
                 chat_id=M.chat_id,
                 photo=image,
-                caption=msg,
+                caption=text,
                 reply_to_message_id=M.message_id,
+                parse_mode="HTML",
             )
 
         except Exception as e:
             await self.client.send_message(
                 chat_id=M.chat_id,
-                text="⚠️ An error occurred while fetching anime data.",
+                text="⚠️ <b>Failed to fetch anime data.</b>",
                 reply_to_message_id=M.message_id,
+                parse_mode="HTML",
             )
-            self.client.log.error(f"[ERROR] [AnimeID] {e}")
+            tb = traceback.extract_tb(e.__traceback__)[-1]
+            self.client.log.error(f"[ERROR] {context.cmd}: {tb.lineno} | {e}")
+            

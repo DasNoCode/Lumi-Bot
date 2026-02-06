@@ -1,4 +1,5 @@
 from __future__ import annotations
+import traceback
 from Libs import BaseCommand
 from typing import Any, TYPE_CHECKING
 
@@ -25,56 +26,66 @@ class Command(BaseCommand):
         )
 
     async def exec(self, M: Message, context: list[Any]) -> None:
-        if not context or not str(context[0]).isdigit():
-            return await self.client.send_message(
-                M.chat_id,
-                "❌ Looks like you forgot to type the manga ID.",
+        if not (int(context.get("text", ""))):
+            await self.client.send_message(
+                chat_id=M.chat_id,
+                text="<blockquote>❌ <b>You must provide a valid manga ID.</b></blockquote>",
                 reply_to_message_id=M.message_id,
+                parse_mode="HTML",
             )
+            return
 
-        manga_id = context[0]
+        manga_id = int(context.get("text", ""))
 
         try:
-            url = f"https://weeb-api.vercel.app/manga?search={manga_id}"
-            results = self.client.utils.fetch(url)
+            results = await self.client.utils.fetch(
+                f"https://weeb-api.vercel.app/manga?search={manga_id}"
+            )
 
             if not results:
-                return await self.client.send_message(
-                    M.chat_id,
-                    "🤔 Hmm... I couldn't find anything matching that manga ID.",
+                await self.client.send_message(
+                    chat_id=M.chat_id,
+                    text="<blockquote>🤔 <b>No manga found for this ID.</b></blockquote>",
                     reply_to_message_id=M.message_id,
+                    parse_mode="HTML",
                 )
+                return
 
             manga = results[0]
             title = manga["title"]
 
-            message = (
-                f"📚 {title['english']} | {title['romaji']}\n"
-                f"🈶 Japanese: {title['native']}\n"
-                f"📦 Type: {manga['format']}\n"
-                f"⚠️ Is Adult: {'Yes' if manga['isAdult'] else 'No'}\n"
-                f"📌 Status: {manga['status']}\n"
-                f"📖 Chapters: {manga['chapters']}\n"
-                f"📦 Volumes: {manga['volumes']}\n"
-                f"⏳ First Aired: {manga['startDate']}\n"
-                f"🕰️ Last Aired: {manga['endDate']}\n"
-                f"🎭 Genres: {', '.join(manga['genres'])}\n"
-                f"🎬 Trailer: https://youtu.be/{manga['trailer']['id'] if manga.get('trailer') else 'null'}\n\n"
-                f"📄 Description:\n_{manga['description']}_"
+            text = (
+                "<blockquote>"
+                f"📚 <b>{title['english']} | {title['romaji']}</b>\n"
+                f"├ <b>Japanese:</b> {title['native']}\n"
+                f"├ <b>Type:</b> {manga['format']}\n"
+                f"├ <b>Adult:</b> {'Yes' if manga['isAdult'] else 'No'}\n"
+                f"├ <b>Status:</b> {manga['status']}\n"
+                f"├ <b>Chapters:</b> {manga['chapters']}\n"
+                f"├ <b>Volumes:</b> {manga['volumes']}\n"
+                f"├ <b>First Aired:</b> {manga['startDate']}\n"
+                f"├ <b>Last Aired:</b> {manga['endDate']}\n"
+                f"├ <b>Genres:</b> {', '.join(manga['genres'])}\n"
+                f"├ <b>Trailer:</b> https://youtu.be/{manga['trailer']['id'] if manga.get('trailer') else 'N/A'}\n"
+                f"└ <b>Description:</b>\n{manga['description']}"
+                "</blockquote>"
             )
 
             image = self.client.utils.fetch_buffer(manga["coverImage"])
-            await self.client.send_image(
-                M.chat_id,
-                image,
-                message.strip(),
+            await self.client.send_photo(
+                chat_id=M.chat_id,
+                photo=image,
+                caption=text,
                 reply_to_message_id=M.message_id,
+                parse_mode="HTML",
             )
 
         except Exception as e:
             await self.client.send_message(
-                M.chat_id,
-                "⚠️ Failed to fetch manga info. Please try again later.",
+                chat_id=M.chat_id,
+                text="⚠️ <b>Failed to fetch manga details.</b>",
                 reply_to_message_id=M.message_id,
+                parse_mode="HTML",
             )
-            self.client.log.error(f"[ERROR] [MangaDetail] {e}")
+            tb = traceback.extract_tb(e.__traceback__)[-1]
+            self.client.log.error(f"[ERROR] {context.cmd}: {tb.lineno} | {e}")

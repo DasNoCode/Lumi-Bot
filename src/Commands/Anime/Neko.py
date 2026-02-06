@@ -1,4 +1,5 @@
 from __future__ import annotations
+import traceback
 from Libs import BaseCommand
 from typing import Any, TYPE_CHECKING
 
@@ -23,36 +24,45 @@ class Command(BaseCommand):
 
     async def exec(self, M: Message, context: list[Any]) -> None:
         try:
-            res = self.client.utils.fetch("https://nekos.best/api/v2/neko")
+            res = await self.client.utils.fetch("https://nekos.best/api/v2/neko")
             results = res.get("results", [])
 
             if not results:
-                return await self.client.send_message(
-                    M.chat_id,
-                    "❌ Couldn't find a neko image right now. Try again later.",
+                await self.client.send_message(
+                    chat_id=M.chat_id,
+                    text="<blockquote>❌ <b>No neko found right now.</b></blockquote>",
                     reply_to_message_id=M.message_id,
+                    parse_mode="HTML",
                 )
+                return
 
             neko = results[0]
             image = self.client.utils.fetch_buffer(neko["url"])
 
-            message = f"""🐾 Here's a Neko for you!
-                    🎨 Artist: {neko['artist_name']}
-                    🔗 Source: {neko['source_url']}
-                    👤 Artist Profile: {neko['artist_href']}
-                    🖼 Image: {neko['url']}"""
+            caption = (
+                "<blockquote>"
+                "🐾 <b>Here’s a Neko for you!</b>\n"
+                f"├ <b>Artist:</b> {neko['artist_name']}\n"
+                f"├ <b>Source:</b> {neko['source_url']}\n"
+                f"├ <b>Artist Profile:</b> {neko['artist_href']}\n"
+                f"└ <b>Image:</b> {neko['url']}"
+                "</blockquote>"
+            )
 
-            await self.client.send_image(
-                M.chat_id,
-                image,
-                message.strip(),
+            await self.client.send_photo(
+                chat_id=M.chat_id,
+                photo=image,
+                caption=caption,
                 reply_to_message_id=M.message_id,
+                parse_mode="HTML",
             )
 
         except Exception as e:
             await self.client.send_message(
-                M.chat_id,
-                "⚠️ Failed to fetch neko image.",
+                chat_id=M.chat_id,
+                text="⚠️ <b>Failed to fetch neko image.</b>",
                 reply_to_message_id=M.message_id,
+                parse_mode="HTML",
             )
-            self.client.log.error(f"[ERROR] [Neko] {e}")
+            tb = traceback.extract_tb(e.__traceback__)[-1]
+            self.client.log.error(f"[ERROR] {context.cmd}: {tb.lineno} | {e}")

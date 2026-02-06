@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 import os
-import sys
+import traceback
 from typing import Any, TYPE_CHECKING
 
 from telegram.error import NetworkError
@@ -84,13 +84,8 @@ class Command(BaseCommand):
                     os.remove(path)
 
         except NetworkError as e:
-            _, _, tb = sys.exc_info()
-            line = tb.tb_lineno if tb else -1
-            self.client.log.error(
-                "[SetChatPFP][NetworkError] line %d: %s",
-                line,
-                e,
-            )
+            tb = traceback.extract_tb(e.__traceback__)[-1]
+            self.client.log.error(f"[ERROR] {context.cmd}: {tb.lineno} | {e}")
 
             await self.client.send_message(
                 chat_id=M.chat_id,
@@ -99,14 +94,8 @@ class Command(BaseCommand):
             )
 
         except Exception as e:
-            _, _, tb = sys.exc_info()
-            line = tb.tb_lineno if tb else -1
-
-            self.client.log.error(
-                "[SetChatPFP][ERROR] line %d: %s",
-                line,
-                e,
-            )
+            tb = traceback.extract_tb(e.__traceback__)[-1]
+            self.client.log.error(f"[ERROR] {context.cmd}: {tb.lineno} | {e}")
 
             await self.client.send_message(
                 chat_id=M.chat_id,
